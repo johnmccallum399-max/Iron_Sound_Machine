@@ -49,7 +49,7 @@ Hear the factory presets, rendered offline straight from the engine by
 - Full-page preset browser: 27 factory presets in categories (leads, basses,
   keys and bells, pads and choirs, drones, textures, arpeggios) plus user
   presets with author/description metadata, search and prev/next stepping
-- Undo/redo (Ctrl+Z / Ctrl+Shift+Z) and MIDI learn: right-click any knob to
+- Undo/redo (Ctrl+Z / Ctrl+Shift+Z) and MIDI learn: right-click any knob to 
   reset it, type a value or bind an incoming CC (mappings saved with the
   session)
 - Oscilloscope and spectrum analyser, on-screen MIDI keyboard
