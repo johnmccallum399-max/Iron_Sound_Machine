@@ -1,0 +1,63 @@
+name: Release existing build
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Build workflow run to publish
+        required: true
+        default: "43250812399"
+      tag:
+        description: Release tag
+        required: true
+        default: "v1.1.0"
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: release-existing-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      SOURCE_RUN: ${{ inputs.run_id }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - name: Verify successful build and release target
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$SOURCE_RUN" > run.json
+          jq -e '.status == "completed" and .conclusion == "success" and .path == ".github/workflows/build.yml" and .event != "pull_request"' run.json
+          sha=$(jq -r .head_sha run.json)
+          gh release view "$RELEASE_TAG" --json isDraft,targetCommitish > release.json
+          jq -e --arg sha "$sha" '.isDraft == true and .targetCommitish == $sha' release.json
+
+      - name: Download original build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          pattern: Galdr-*
+          path: dist
+          merge-multiple: true
+
+      - name: Attach packages and publish
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s dist/Galdr-Windows.zip
+          test -s dist/Galdr-macOS.tar.gz
+          test -s dist/Galdr-Linux.tar.gz
+          gh release upload "$RELEASE_TAG" dist/* --clobber
+          gh release view "$RELEASE_TAG" --json assets > assets.json
+          for name in Galdr-Windows.zip Galdr-macOS.tar.gz Galdr-Linux.tar.gz; do
+            jq -e --arg name "$name" '.assets | any(.name == $name and .size > 0)' assets.json
+          done
+          gh release edit "$RELEASE_TAG" --draft=false --latest
